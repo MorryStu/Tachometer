@@ -1,0 +1,102 @@
+
+#include <SPI.h>
+#include "Adafruit_GFX.h"
+#include "Adafruit_RA8875.h"
+#define RA8875_INT 3
+#define RA8875_CS 10
+#define RA8875_RESET 9
+Adafruit_RA8875 tft = Adafruit_RA8875(RA8875_CS, RA8875_RESET);
+uint16_t tx, ty;
+volatile unsigned long timePointsOpen, timePointsClosed, lastChange;
+volatile unsigned int numBangs;
+float enginerpm;
+int LastPercent0 = 0;
+int rpmValue = 0;
+int rpmPercent =0;
+int tempPercent = 0;
+
+void pointsOpening(){
+    unsigned long t;
+    t = millis();
+    if (lastChange > 0){
+        timePointsClosed += (t - lastChange);
+    }
+    lastChange = t;
+    ++numBangs;
+}
+
+void setup(){
+{
+
+  Serial.begin(9600);
+  
+  pinMode(2, INPUT);
+  digitalWrite(3, HIGH);
+
+}
+
+{
+  tft.begin(RA8875_800x480);
+  tft.displayOn(true);
+  tft.GPIOX(true);      // Enable TFT - display enable tied to GPIOX
+  tft.PWM1config(true, RA8875_PWM_CLK_DIV1024); // PWM output for backlight
+  tft.PWM1out(255);
+  tft.textMode();
+
+  }
+ } 
+ void displayvalue()
+{ 
+
+  tft.displayOn(true);
+  tft.GPIOX(true);      // Enable TFT - display enable tied to GPIOX
+  tft.PWM1config(true, RA8875_PWM_CLK_DIV1024); // PWM output for backlight
+  tft.PWM1out(255);
+  tft.textMode();
+  char rpmstring[30];
+  dtostrf(enginerpm, 3, 0, rpmstring); //from temp floattft.textSetCursor(10, 10);
+  tft.textSetCursor(10, 10);
+  tft.textColor(RA8875_WHITE, RA8875_BLACK);
+  tft.textEnlarge(8);
+  tft.textWrite("Engine RPM  ");
+  tft.textWrite(rpmstring);
+  //delay (500);
+  
+}
+ void drawBarrpm (int nPer0) {
+
+  if (nPer0  < LastPercent0)
+  {
+    tft.fillRect(110, 50 + (350 - LastPercent0 ), 100, LastPercent0 - nPer0 ,  RA8875_BLACK);
+  }
+  else {
+    tft.fillRect(110, 50 + (350 - nPer0  ), 100, nPer0 - LastPercent0 ,  RA8875_WHITE);
+  }
+  LastPercent0 = nPer0;
+ }
+void loop(){
+{
+  // Number of coil pulses
+  numBangs = 0;
+  attachInterrupt(0, pointsOpening, RISING);
+  delay(500);
+  detachInterrupt(0);
+  numBangs = ((6000/50)*numBangs)/6; // /2 = 2 cylinder
+  Serial.print("RPM: ");
+  Serial.println(numBangs);
+  enginerpm = numBangs;
+  //enginerpm = (numBangs);
+  displayvalue();
+  
+ }
+{
+
+  rpmValue = enginerpm;
+  rpmPercent = int((rpmValue / 1000.0) * 45.0);
+  if (rpmPercent != LastPercent0) {
+    drawBarrpm(rpmPercent);
+  }
+
+                
+}
+}
